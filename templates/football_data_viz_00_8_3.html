@@ -1,0 +1,920 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Football Match Data Visualization</title>
+<script src="https://d3js.org/d3.v6.min.js"></script>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<style>
+    body {
+        font-family: Arial, sans-serif; /* Apply Arial font, sans-serif as fallback */
+    }
+    .dropdown-container {
+        display: flex;
+        justify-content: space-around;
+        align-items: center;
+        padding: 10px;
+        background-color: #f8f8f8;
+        margin-bottom: 10px; /* Space between the dropdowns and the chart/info panel */
+    }
+
+    .dropdown-container > div {
+        margin: 0 10px;
+        /*border: 1px solid #d3d3d3;*/
+    }
+
+
+
+    /* Additional styles for the filter-container */
+    .filter-container {
+        display: flex;
+        justify-content: flex-start; /* Aligns content to the left */
+        align-items: center;
+        padding: 10px;
+        margin-top: 20px;
+        margin-left: 10px; /* Adjust as needed for left alignment */
+    }
+    .filter-container > div {
+        margin: 0 15px;
+        display: flex;
+        align-items: center;
+    }
+    .filter-container label, .filter-container span {
+        margin-right: 5px;
+    }
+</style>
+</head>
+
+<body>
+
+<!-- Dropdown Menus wrapped in a container -->
+<div class="dropdown-container">
+    <div>
+        <label for="group-by">Group by:</label>
+        <select id="group-by">
+            <option value="team" selected>Team</option>
+            <option value="tournament">Tournament</option>
+            <option value="year">Year</option>
+            <option value="country">Country</option>
+        </select>
+    </div>
+
+    <div>
+        <label for="x-axis">X-axis:</label>
+        <select id="x-axis">
+            <!-- Options will be added dynamically -->
+        </select>
+    </div>
+
+    <div>
+        <label for="y-axis">Y-axis:</label>
+        <select id="y-axis">
+            <!-- Options will be added dynamically -->
+        </select>
+    </div>
+
+    <div>
+        <label for="size">Size:</label>
+        <select id="size">
+            <!-- Options will be added dynamically -->
+        </select>
+    </div>
+</div>
+
+
+
+<!-- Parent Container -->
+<div class="parent-container" style="display: flex; flex-direction: column; align-items: flex_start;">
+
+    <!-- Row Container for Bubble Chart and Info Panel -->
+    <div style="display: flex; justify-content: flex-start; width: 100%;">
+        <!-- Bubble Chart Container -->
+        <div id="bubble-chart" class="bubble-chart-container">
+            <!-- Bubble Chart content will go here -->
+        </div>
+
+        <!-- Info Panel Container -->
+        <div id="info-panel" class="info-panel-container" style="width: 390px; overflow-y: auto; border: 1px solid #ccc; padding: 10px;">
+            <strong>International Football Matches (1872-Present) data representation narrated by chat-gpt.</strong>
+            <p>Select a bubble to see detailed information.</p>
+
+            <!-- Other Info Container -->
+            <div id="other-info-container" class="other-info-container" style="max-height: 200px; overflow-y: auto; border: 1px solid #ddd; padding: 5px;">
+                <!-- Existing content will go here -->
+            </div>
+
+            <!-- GPT Response Container -->
+            <div id="gpt-response-container" class="gpt-response-container" style="max-height: 200px; overflow-y: auto; border: 1px solid #ddd; padding: 5px;">
+                <!-- GPT-3 responses will go here -->
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Filter Container -->
+    <div class="filter-container">
+    <div id="filter-matches-played" style="display: none;">
+        <label for="range-matches-played">Matches Played:</label>
+        <input type="range" id="range-matches-played" min="0" max="1000" value="0">
+        <span id="value-matches-played">0</span>
+    </div>
+
+    <div id="filter-wins" style="display: none;">
+        <label for="range-wins">Wins:</label>
+        <input type="range" id="range-wins" min="0" max="100" value="0">
+        <span id="value-wins">0</span>
+    </div>
+
+    <!-- Filter for Number of Matches Played in Tournament -->
+    <div id="filter-tournament-matches-played" style="display: none;">
+        <label for="range-tournament-matches-played">Tournament Matches Played:</label>
+        <input type="range" id="range-tournament-matches-played" min="0" max="1000" value="0">
+        <span id="value-tournament-matches-played">0</span>
+    </div>
+
+    <!-- Filter for Number of Unique Teams in Tournament -->
+    <div id="filter-tournament-unique-teams" style="display: none;">
+        <label for="range-tournament-unique-teams">Unique Teams:</label>
+        <input type="range" id="range-tournament-unique-teams" min="0" max="100" value="0">
+        <span id="value-tournament-unique-teams">0</span>
+    </div>
+
+    <!-- Filter for Total Matches Count in Year -->
+    <div id="filter-year-matches-count" style="display: none;">
+        <label for="range-year-matches-count">Total Matches Count:</label>
+        <input type="range" id="range-year-matches-count" min="0" max="1000" value="0">
+        <span id="value-year-matches-count">0</span>
+    </div>
+
+    <!-- Filter for Home Score in Year -->
+    <div id="filter-year-home-score" style="display: none;">
+        <label for="range-year-home-score">Home Score:</label>
+        <input type="range" id="range-year-home-score" min="0" max="10" value="0">
+        <span id="value-year-home-score">0</span>
+    </div>
+
+    <!-- Filter for Away Score in Year -->
+    <div id="filter-year-away-score" style="display: none;">
+        <label for="range-year-away-score">Away Score:</label>
+        <input type="range" id="range-year-away-score" min="0" max="10" value="0">
+        <span id="value-year-away-score">0</span>
+    </div>
+
+    <!-- Filter for Total Matches Hosted by Country -->
+    <div id="filter-country-total-matches-hosted" style="display: none;">
+        <label for="range-country-total-matches-hosted">Total Matches Hosted:</label>
+        <input type="range" id="range-country-total-matches-hosted" min="0" max="1000" value="0">
+        <span id="value-country-total-matches-hosted">0</span>
+    </div>
+
+    <!-- Filter for Tournament Count in Country -->
+    <div id="filter-country-tournament-count" style="display: none;">
+        <label for="range-country-tournament-count">Tournament Count:</label>
+        <input type="range" id="range-country-tournament-count" min="0" max="100" value="0">
+        <span id="value-country-tournament-count">0</span>
+    </div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+<!-- Tooltip -->
+<div id="tooltip" style="position: absolute; visibility: hidden; pointer-events: none; padding: 10px; background: rgba(255, 255, 255, 0.9); border: 1px solid #ccc; border-radius: 5px;"></div>
+
+
+<script>
+
+
+function populateDropdowns(columns, groupByValue) {
+    const xAxis = document.getElementById('x-axis');
+    const yAxis = document.getElementById('y-axis');
+    const size = document.getElementById('size');
+
+    // Define columns to be excluded or included based on groupByValue
+    let filteredColumns = columns;
+    if (groupByValue === 'country') {
+        const excludeColumns = ['Most Common City', 'Most Common Opponent'];
+        filteredColumns = columns.filter(column => !excludeColumns.includes(column));
+    } else if (groupByValue === 'year') {
+        const includeColumns = ['away_score', 'home_score', 'matches_count'];
+        filteredColumns = columns.filter(column => includeColumns.includes(column));
+    }
+
+    // Store current values to reapply them later if they're still valid
+    const currentXAxis = xAxis.value;
+    const currentYAxis = yAxis.value;
+    const currentSize = size.value;
+
+    // Clear existing options
+    xAxis.innerHTML = '';
+    yAxis.innerHTML = '';
+    size.innerHTML = '';
+
+    // Add new filtered options
+    filteredColumns.forEach(column => {
+        xAxis.innerHTML += `<option value="${column}">${column}</option>`;
+        yAxis.innerHTML += `<option value="${column}">${column}</option>`;
+        size.innerHTML += `<option value="${column}">${column}</option>`;
+    });
+
+    // Reapply the previous selections if they are still valid
+    if (filteredColumns.includes(currentXAxis)) {
+        xAxis.value = currentXAxis;
+    }
+    if (filteredColumns.includes(currentYAxis)) {
+        yAxis.value = currentYAxis;
+    }
+    if (filteredColumns.includes(currentSize)) {
+        size.value = currentSize;
+    }
+
+    // Set default dropdown values if needed
+    if (!filteredColumns.includes(currentXAxis) || !filteredColumns.includes(currentYAxis) || !filteredColumns.includes(currentSize)) {
+        setDefaultDropdownValues(groupByValue);
+    }
+}
+
+
+
+
+function setDefaultDropdownValues(groupByValue) {
+    const xAxis = document.getElementById('x-axis');
+    const yAxis = document.getElementById('y-axis');
+    const size = document.getElementById('size');
+
+    switch(groupByValue) {
+        case 'team':
+            xAxis.value = 'matches_played';
+            yAxis.value = 'wins';
+            size.value = 'tournaments';
+            break;
+        case 'tournament':
+            xAxis.value = 'matches_played';
+            yAxis.value = 'unique_teams';
+            size.value = 'matches_played';
+            break;
+        case 'year':
+            xAxis.value = 'home_score';
+            yAxis.value = 'away_score';
+            size.value = 'matches_count';
+            break;
+        case 'country':
+            xAxis.value = 'Total Matches Hosted';
+            yAxis.value = 'Average Home Score';
+            size.value = 'Tournament Count';
+            break;
+    }
+}
+
+async function loadGroupedData(groupByValue) {
+    let dataUrl = `/group-data/${groupByValue}`;
+
+    try {
+        const response = await fetch(dataUrl);
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        const groupedData = await response.json();
+
+        if (Array.isArray(groupedData)) {
+            populateDropdowns(Object.keys(groupedData[0]), groupByValue);
+            return groupedData;
+        } else {
+            console.error('Data is not in the expected format:', groupedData);
+            return [];
+        }
+    } catch (error) {
+        console.error('Error loading data:', error);
+        return [];
+    }
+}
+
+
+
+
+
+
+
+
+
+function createBubbleChart(data, xValue, yValue, sizeValue, groupByValue) {
+    // Define dimensions and margins for the chart
+    const margin = { top: 20, right: 20, bottom: 30, left: 50 },
+          width = 960 - margin.left - margin.right,
+          height = 500 - margin.top - margin.bottom;
+
+    // Remove any existing SVG (useful for when updating the chart)
+    d3.select('#bubble-chart').select('svg').remove();
+
+    // Create SVG element
+    const svg = d3.select('#bubble-chart').append('svg')
+                  .attr('width', width + margin.left + margin.right)
+                  .attr('height', height + margin.top + margin.bottom)
+                .append('g')
+                  .attr('transform', `translate(${margin.left},${margin.top})`);
+
+    // Set up x-scale and y-scale
+    const xScale = d3.scaleLinear()
+                     .domain(d3.extent(data, d => parseFloat(d[xValue])))
+                     .range([0, width]);
+    const yScale = d3.scaleLinear()
+                     .domain(d3.extent(data, d => parseFloat(d[yValue])))
+                     .range([height, 0]);
+
+    // Set up size scale (for bubble sizes)
+    const sizeScale = d3.scaleLinear()
+                        .domain(d3.extent(data, d => parseFloat(d[sizeValue])))
+                        .range([4, 40]); // Range for bubble sizes
+
+    // Append group for x-axis and y-axis
+    const gX = svg.append('g')
+                  .attr('transform', `translate(0,${height})`);
+    const gY = svg.append('g');
+
+    // Create axes
+    const xAxis = d3.axisBottom(xScale);
+    const yAxis = d3.axisLeft(yScale);
+
+    // Draw initial axes
+    gX.call(xAxis);
+    gY.call(yAxis);
+
+    // Create a clipping region
+    svg.append("defs").append("clipPath")
+        .attr("id", "clip")
+        .append("rect")
+        .attr("width", width)
+        .attr("height", height);
+
+    // Group to apply the zoom
+    var chartBody = svg.append("g")
+        .attr("clip-path", "url(#clip)");
+
+    // Define the zoom behavior
+    var zoom = d3.zoom()
+        .scaleExtent([0.5, 5]) // Min and max zoom levels
+        .on("zoom", (event) => {
+            // Update scales
+            const new_xScale = event.transform.rescaleX(xScale);
+            const new_yScale = event.transform.rescaleY(yScale);
+
+            // Update axes
+            gX.call(xAxis.scale(new_xScale));
+            gY.call(yAxis.scale(new_yScale));
+
+            // Update bubble positions and sizes
+            chartBody.selectAll('.bubble')
+                .attr('cx', d => new_xScale(parseFloat(d[xValue])))
+                .attr('cy', d => new_yScale(parseFloat(d[yValue])))
+                .attr('r', d => sizeScale(parseFloat(d[sizeValue])) * Math.sqrt(event.transform.k));
+        });
+
+    // Apply the zoom behavior to the SVG element
+    svg.call(zoom);
+
+    // Select the tooltip element
+    const tooltip = d3.select('#tooltip');
+
+    // Function to update tooltip content based on groupByValue
+    function updateTooltipContent(d) {
+        //console.log("Keys in 'd':", Object.keys(d));
+        let tooltipHtml = '';
+        switch(groupByValue) {
+            case 'team':
+                tooltipHtml = `<strong>Team:</strong> ${d.team}<br>
+                               <strong>Matches Played:</strong> ${d.matches_played}`;
+                break;
+            case 'tournament':
+                tooltipHtml = `<strong>Tournament:</strong> ${d.tournament}<br>
+                               <strong>Matches Played:</strong> ${d.matches_played}`;
+                break;
+            case 'year':
+                tooltipHtml = `<strong>Year:</strong> ${d.year}<br>
+                               <strong>Matches Count:</strong> ${d.matches_count}`;
+                break;
+            case 'country':
+                tooltipHtml = `<strong>Country:</strong> ${d.country}<br>
+                               <strong>Total Matches Hosted:</strong> ${d['Total Matches Hosted']}`;
+                break;
+        }
+        return tooltipHtml;
+    }
+    function onBubbleClick(bubbleData, bubbleType) {
+        var bubbleId = bubbleType + '_' + bubbleData; // Construct a unique ID for the bubble
+        document.getElementById('gpt-response-container').innerHTML = 'Waiting for chat-gpt response...';
+
+        // Filter bubbleData if bubbleType is 'year'
+        if (bubbleType === 'year') {
+            bubbleData = {
+                year: bubbleData.year,
+                matches_count: bubbleData.matches_count
+            };
+        }
+
+        // Log bubbleData and bubbleType to the console
+        console.log('bubbleData:', bubbleData);
+        console.log('bubbleType:', bubbleType);
+
+        $.ajax({
+            url: '/chatgpt',
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({ bubbleData: bubbleData, bubbleType: bubbleType }),
+            success: function(response) {
+                // Display the data in your information tab
+                displayGPTResponse(response);
+            },
+            error: function(xhr, status, error) {
+                console.error('Error:', error);
+                // Optionally, handle the error in your UI, e.g., display an error message
+            }
+        });
+    }
+
+    function displayGPTResponse(data) {
+        const gptResponseContainer = d3.select('#gpt-response-container');
+        const infoPanel = d3.select('#gpt-response-container');
+        //const infoPanel = d3.select('#other-info-container')
+        infoPanel.html(''); // Clear existing content
+
+        if (data && data.content) {
+            const gptResponse = data.content.trim();
+
+            // Create a container for the GPT response
+            const gptContainer = infoPanel.append('div')
+                                        .attr('class', 'gpt-response-container');
+
+            // Add the response to the container
+            gptContainer.append('p')
+                        .attr('class', 'gpt-response')//.text('hello world');
+                        .text(gptResponse);
+        } else {
+            infoPanel.append('p').text('No response from GPT-3.');
+        }
+    }
+
+
+
+
+    // Implement determineBubbleType function based on your data
+    function determineBubbleType() {
+        const groupBySelection = document.getElementById('group-by').value;
+
+        switch (groupBySelection) {
+            case 'team':
+                return 'team';
+            case 'tournament':
+                return 'tournament';
+            case 'year':
+                return 'year';
+            case 'country':
+                return 'country';
+            default:
+                return 'unknown'; // Default case if no match is found
+        }
+    }
+
+
+    chartBody.selectAll('.bubble')
+        .data(data)
+        .enter().append('circle')
+        .attr('class', 'bubble')
+        .attr('cx', d => xScale(parseFloat(d[xValue])))
+        .attr('cy', d => yScale(parseFloat(d[yValue])))
+        .attr('r', d => sizeScale(parseFloat(d[sizeValue])))
+        .style('fill', 'blue')
+        .style('opacity', 0.4)
+        .on('mouseover', function(event, d) {
+            d3.select(this)
+                .style('stroke', '#333') // Add stroke on hover
+                .style('stroke-width', '2px') // Adjust stroke width
+                .style('fill-opacity', 1); // Increase opacity
+
+            tooltip.style('visibility', 'visible')
+                .html(updateTooltipContent(d))
+                .style('top', (event.pageY - 10) + 'px')
+                .style('left', (event.pageX + 10) + 'px');
+        })
+        .on('mousemove', function(event) {
+            tooltip.style('top', (event.pageY - 10) + 'px')
+                .style('left', (event.pageX + 10) + 'px');
+        })
+        .on('mouseout', function() {
+            d3.select(this)
+                .style('stroke', null) // Remove stroke when not hovered
+            .style('stroke-width', null)
+            .style('fill-opacity', 0.4); // Reset opacity to original
+
+        tooltip.style('visibility', 'hidden');
+        })
+        .on('click', function(event, d) {
+            const groupByValue = document.getElementById('group-by').value;
+            let bubbleType = determineBubbleType(d);
+            updateInfoPanel(d, groupByValue, onBubbleClick(d, bubbleType));
+        });
+
+}
+
+// Function to update the information panel
+function updateInfoPanel(d, groupByValue, callback) {
+    const otherInfoContainer = d3.select('#other-info-container');
+    //console.log('Other Info Container:', otherInfoContainer.node());
+
+
+    const infoPan = d3.select('#other-info-container');
+    infoPan.html(''); // Clear the previous contents
+
+    // Create a container for the other-info
+    const otherContainer = infoPan.append('div').attr('class', 'other-info-container');
+
+
+
+    if (groupByValue === 'team') {
+        const winRate = (d.wins / d.matches_played * 100).toFixed(2);
+        // Create a container for the other-info
+        otherContainer.append('h3').attr('class', 'other-info').text(d.team);
+        otherContainer.append('p').attr('class', 'other-info').text(`Total Matches Played: ${d.matches_played}`);
+        otherContainer.append('p').attr('class', 'other-info').text(`Total Wins: ${d.wins}`);
+        otherContainer.append('p').attr('class', 'other-info').text(`Total Losses: ${d.losses}`);
+        otherContainer.append('p').attr('class', 'other-info').text(`Total Draws: ${d.draws}`);
+        otherContainer.append('p').attr('class', 'other-info').text(`Tournaments: ${d.tournaments}`);
+        otherContainer.append('p').attr('class', 'other-info').text(`Home Wins: ${d.home_wins}`);
+        otherContainer.append('p').attr('class', 'other-info').text(`Away Wins: ${d.away_wins}`);
+        otherContainer.append('p').attr('class', 'other-info').text(`Home Losses: ${d.home_losses}`);
+        otherContainer.append('p').attr('class', 'other-info').text(`Away Losses: ${d.away_losses}`);
+        otherContainer.append('p').attr('class', 'other-info').text(`Home Matches Played: ${d.home_matches_played}`);
+        otherContainer.append('p').attr('class', 'other-info').text(`Away Matches Played: ${d.away_matches_played}`);
+        otherContainer.append('p').attr('class', 'other-info').text(`Win Rate: ${winRate}%`);
+    } else if (groupByValue === 'tournament') {
+        // Assuming 'start_date' and 'end_date' can be combined as the dates of the tournament
+        const tournamentDates = `${d.start_date} to ${d.end_date}`;
+        otherContainer.append('h3').attr('class', 'other-info').text(d.tournament);
+        otherContainer.append('p').attr('class', 'other-info').text(`Dates of Tournament: ${tournamentDates}`);
+        otherContainer.append('p').attr('class', 'other-info').text(`The Most Frequent Location/Country: ${d.location}`);
+        otherContainer.append('p').attr('class', 'other-info').text(`Total Number of Matches: ${d.matches_played}`);
+        otherContainer.append('p').attr('class', 'other-info').text(`Tournament Most Frequent Winner: ${d.tournament_winner}`);
+        otherContainer.append('p').attr('class', 'other-info').text(`Unique Teams: ${d.unique_teams}`);
+        otherContainer.append('p').attr('class', 'other-info').text(`Average Home Goals: ${d.average_home_goals}`);
+        otherContainer.append('p').attr('class', 'other-info').text(`Average Away Goals: ${d.average_away_goals}`);
+        otherContainer.append('p').attr('class', 'other-info').text(`Home Wins: ${d.home_wins}`);
+        otherContainer.append('p').attr('class', 'other-info').text(`Away Wins: ${d.away_wins}`);
+        otherContainer.append('p').attr('class', 'other-info').text(`Draws: ${d.draws}`);
+    } else if (groupByValue === 'year') {
+        // Creating the content for the information panel
+        otherContainer.append('h3').attr('class', 'other-info').text(`Year: ${d.year}`);
+        otherContainer.append('p').attr('class', 'other-info').text(`Total Matches: ${d.matches_count}`);
+        otherContainer.append('p').attr('class', 'other-info').text(`Average Home Score: ${d.home_score}`);
+        otherContainer.append('p').attr('class', 'other-info').text(`Average Away Score: ${d.away_score}`);
+
+        // Find the index of 'away_score' and 'wins' columns
+
+        const keysToExclude = ['Afghanistan', 'Albania', 'Algeria', 'American Samoa', 'Andorra', 'Angola', 'Anguilla', 'Antigua and Barbuda', 'Aotearoa New Zealand', 'Argentina', 'Armenia', 'Aruba', 'Australia', 'Austria', 'Azerbaijan', 'Bahamas', 'Bahrain', 'Bangladesh', 'Barbados', 'Belarus', 'Belgium', 'Belize', 'Benin', 'Bermuda', 'Bhutan', 'Bolivia', 'Bosnia and Herzegovina', 'Botswana', 'Brazil', 'British Virgin Islands', 'Brunei Darussalam', 'Bulgaria', 'Burkina Faso', 'Burundi', 'Cabo Verde', 'Cambodia', 'Cameroon', 'Canada', 'Cayman Islands', 'Central African Republic', 'Chad', 'Chile', 'China PR', 'Chinese Taipei', 'Colombia', 'Comoros', 'Congo', 'Congo DR', 'Cook Islands', 'Costa Rica', 'Cote d\'Ivoire', 'Croatia', 'Cuba', 'Curcao', 'Cyprus', 'Czechia', 'Denmark', 'Djibouti', 'Dominica', 'Dominican Republic', 'Ecuador', 'Egypt', 'El Salvador', 'England', 'Equatorial Guinea', 'Eritrea', 'Estonia', 'Eswatini', 'Ethiopia', 'Faroe Islands', 'Fiji', 'Finland', 'France', 'Gabon', 'Georgia', 'Germany', 'Ghana', 'Gibraltar', 'Greece', 'Grenada', 'Guam', 'Guatemala', 'Guinea', 'Guinea-Bissau', 'Guyana', 'Haiti', 'Honduras', 'Hong Kong, China', 'Hungary', 'IR Iran', 'Iceland', 'India', 'Indonesia', 'Iraq', 'Israel', 'Italy', 'Jamaica', 'Japan', 'Jordan', 'Kazakhstan', 'Kenya', 'Korea DPR', 'Korea Republic', 'Kosovo', 'Kuwait', 'Kyrgyz Republic', 'Laos', 'Latvia', 'Lebanon', 'Lesotho', 'Liberia', 'Libya', 'Liechtenstein', 'Lithuania', 'Luxembourg', 'Macau', 'Madagascar', 'Malawi', 'Malaysia', 'Maldives', 'Mali', 'Malta', 'Mauritania', 'Mauritius', 'Mexico', 'Moldova', 'Mongolia', 'Montenegro', 'Montserrat', 'Morocco', 'Mozambique', 'Myanmar', 'Namibia', 'Nepal', 'Netherlands', 'New Caledonia', 'Nicaragua', 'Niger', 'Nigeria', 'North Macedonia', 'Northern Ireland', 'Norway', 'Oman', 'Pakistan', 'Palestine', 'Panama', 'Papua New Guinea', 'Paraguay', 'Peru', 'Philippines', 'Poland', 'Portugal', 'Puerto Rico', 'Qatar', 'Republic of Ireland', 'Romania', 'Russia', 'Rwanda', 'Samoa', 'San Marino', 'Sao Tome and Principe', 'Saudi Arabia', 'Scotland', 'Senegal', 'Serbia', 'Seychelles', 'Sierra Leone', 'Singapore', 'Slovakia', 'Slovenia', 'Solomon Islands', 'Somalia', 'South Africa', 'South Sudan', 'Spain', 'Sri Lanka', 'St Kitts and Nevis', 'St Lucia', 'St Vincent and the Grenadines', 'Sudan', 'Suriname', 'Sweden', 'Switzerland', 'Syria', 'Tahiti', 'Tajikistan', 'Tanzania', 'Thailand', 'The Gambia', 'Timor-Leste', 'Togo', 'Tonga', 'Trinidad and Tobago', 'Tunisia', 'Turkiye', 'Turkmenistan', 'Turks and Caicos Islands', 'US Virgin Islands', 'USA', 'Uganda', 'Ukraine', 'United Arab Emirates', 'Uruguay', 'Uzbekistan', 'Vanuatu', 'Venezuela', 'Vietnam', 'Wales', 'Yemen', 'Zambia', 'Zimbabwe', 'year', 'wins', 'matches_count', 'losses', 'home_score', 'draw', 'away_score'];
+        const keys = Object.keys(d);
+
+        // Filter out excluded keys
+        const tournaments = keys.filter(key => !keysToExclude.includes(key) && d[key] > 0);
+
+
+
+
+        // Adding 'Tournaments celebrated' section to the panel
+        otherContainer.append('h4').attr('class', 'other-info').text('Matches played in tournaments:');
+        const tournamentContainer = otherContainer.append('div').attr('class', 'tournament-container');
+
+
+
+        // Displaying first 5 tournaments in styled containers
+        tournaments.slice(0, 5).forEach(key => {
+            tournamentContainer.append('div')
+                .attr('class', 'tournament-item')
+                .text(`${key}: ${d[key]}`);
+        });
+
+        // Adding a toggle button to reveal/hide additional tournaments
+        if (tournaments.length > 5) {
+            const toggleButton = tournamentContainer.append('button')
+                .attr('class', 'toggle-button')
+                .text('...')
+                .on('click', function() {
+                    // Check if additional tournaments are already displayed
+                    const additionalTournamentsDisplayed = tournamentContainer.selectAll('.additional').size() > 0;
+
+                    if (!additionalTournamentsDisplayed) {
+                        // Show additional tournaments
+                        tournaments.slice(5).forEach(key => {
+                            tournamentContainer.append('div')
+                                .attr('class', 'tournament-item additional')
+                                .text(`${key}: ${d[key]}`);
+                        });
+                        this.textContent = 'Less...'; // Change button text to 'Less...'
+                    } else {
+                        // Hide additional tournaments
+                        tournamentContainer.selectAll('.additional').remove();
+                        this.textContent = 'More...'; // Change button text to 'More...'
+                    }
+                });
+        }
+    } else if (groupByValue === 'country') {
+        // Displaying the detailed information for the selected country
+        otherContainer.append('h3').attr('class', 'other-info').text(`Country: ${d.country}`);
+        otherContainer.append('p').attr('class', 'other-info').text(`Total Matches Hosted: ${d['Total Matches Hosted']}`);
+        otherContainer.append('p').attr('class', 'other-info').text(`Average Home Score: ${d['Average Home Score']}`);
+        otherContainer.append('p').attr('class', 'other-info').text(`Average Away Score: ${d['Average Away Score']}`);
+        otherContainer.append('p').attr('class', 'other-info').text(`Tournament Count: ${d['Tournament Count']}`);
+        otherContainer.append('p').attr('class', 'other-info').text(`Home Wins: ${d['Home Wins']}`);
+        otherContainer.append('p').attr('class', 'other-info').text(`Home Losses: ${d['Home Losses']}`);
+        otherContainer.append('p').attr('class', 'other-info').text(`Home Draws: ${d['Home Draws']}`);
+        otherContainer.append('p').attr('class', 'other-info').text(`Average Goal Difference: ${d['Average Goal Difference']}`);
+        otherContainer.append('p').attr('class', 'other-info').text(`Most Common Opponent: ${d['Most Common Opponent']}`);
+        otherContainer.append('p').attr('class', 'other-info').text(`Most Common City: ${d['Most Common City']}`);
+    }
+
+
+    if (callback){
+        callback();
+    }
+
+}
+
+
+
+
+
+async function updateChart(groupByValue) {
+    const xAxisValue = document.getElementById('x-axis').value;
+    const yAxisValue = document.getElementById('y-axis').value;
+    const sizeValue = document.getElementById('size').value;
+
+    // Load data
+    let originalData = await loadGroupedData(groupByValue);
+
+    let filteredData = originalData;
+
+    // Apply filters
+    if (groupByValue === 'team') {
+        let minMatchesPlayed = document.getElementById('range-matches-played').value;
+        let minWins = document.getElementById('range-wins').value;
+        filteredData = originalData.filter(d => d.matches_played >= minMatchesPlayed && d.wins >= minWins);
+    } else if (groupByValue === 'tournament') {
+        let minMatchesPlayed = document.getElementById('range-tournament-matches-played').value;
+        let minUniqueTeams = document.getElementById('range-tournament-unique-teams').value;
+        filteredData = originalData.filter(d => d.matches_played >= minMatchesPlayed && d.unique_teams >= minUniqueTeams);
+    } else if (groupByValue === 'year') {
+        let minMatchesCount = document.getElementById('range-year-matches-count').value;
+        let minHomeScore = document.getElementById('range-year-home-score').value;
+        let minAwayScore = document.getElementById('range-year-away-score').value;
+        filteredData = originalData.filter(d => d.matches_count >= minMatchesCount && d.home_score >= minHomeScore && d.away_score >= minAwayScore);
+    } else if (groupByValue === 'country') {
+        let minTotalMatchesHosted = document.getElementById('range-country-total-matches-hosted').value;
+        let minTournamentCount = document.getElementById('range-country-tournament-count').value;
+        filteredData = originalData.filter(d => d['Total Matches Hosted'] >= minTotalMatchesHosted && d['Tournament Count'] >= minTournamentCount);
+    }
+    // Apply other filters similarly
+
+    // Proceed with creating the chart only if data is loaded
+    if (filteredData && filteredData.length > 0) {
+        createBubbleChart(filteredData, xAxisValue, yAxisValue, sizeValue, groupByValue);
+    } else {
+        console.error('No data to create the chart.');
+    }
+}
+
+
+function updateFilterVisibility(groupByValue) {
+    // Hide all filters initially
+    document.getElementById('filter-matches-played').style.display = 'none';
+    document.getElementById('filter-wins').style.display = 'none';
+    document.getElementById('filter-tournament-matches-played').style.display = 'none';
+    document.getElementById('filter-tournament-unique-teams').style.display = 'none';
+    document.getElementById('filter-year-matches-count').style.display = 'none';
+    document.getElementById('filter-year-home-score').style.display = 'none';
+    document.getElementById('filter-year-away-score').style.display = 'none';
+    document.getElementById('filter-country-total-matches-hosted').style.display = 'none';
+    document.getElementById('filter-country-tournament-count').style.display = 'none';
+
+    // Display filters based on the selected group-by value
+    if (groupByValue === 'team') {
+        // Show filters related to teams
+        document.getElementById('filter-matches-played').style.display = 'block';
+        document.getElementById('filter-wins').style.display = 'block';
+    } else if (groupByValue === 'tournament') {
+        // Show filters related to tournaments
+        document.getElementById('filter-tournament-matches-played').style.display = 'block';
+        document.getElementById('filter-tournament-unique-teams').style.display = 'block';
+    } else if (groupByValue === 'year') {
+        // Show filters related to years
+        document.getElementById('filter-year-matches-count').style.display = 'block';
+        document.getElementById('filter-year-home-score').style.display = 'block';
+        document.getElementById('filter-year-away-score').style.display = 'block';
+    } else if (groupByValue === 'country') {
+        // Show filters related to countries
+        document.getElementById('filter-country-total-matches-hosted').style.display = 'block';
+        document.getElementById('filter-country-tournament-count').style.display = 'block';
+    }
+    // Additional conditions for other groupBy values can be added here if needed
+}
+
+function updateInfoPanelWithExplanation() {
+    var groupByValue = document.getElementById('group-by').value; // Replace with your actual dropdown ID
+
+    const otherInfoContainer = d3.select('#other-info-container');
+    // Clear the content of the info panel
+    otherInfoContainer.html('');
+
+    const gptContainer = d3.select('#gpt-response-container');
+
+    gptContainer.html(''); // Clear existing content
+
+
+}
+
+
+
+
+// Attach event listeners to the 'group-by' dropdown to update other dropdowns and the chart
+document.getElementById('group-by').addEventListener('change', function() {
+
+
+
+    let groupByValue = this.value;
+
+    if (groupByValue === 'country') {
+        const defaultColumns = ['Total Matches Hosted', 'Average Home Score', 'Tournament Count'];
+        populateDropdowns(defaultColumns, groupByValue);
+    } else if (groupByValue === 'tournament') {
+        const defaultColumns = ['matches_played', 'unique_teams', 'matches_played'];
+        populateDropdowns(defaultColumns, groupByValue);
+    } else if (groupByValue === 'team') {
+        const defaultColumns = ['matches_played', 'wins', 'tournaments'];
+        populateDropdowns(defaultColumns, groupByValue);
+    } else if (groupByValue === 'year') {
+        const defaultColumns = ['home_score', 'away_score', 'matches_count'];
+        populateDropdowns(defaultColumns, groupByValue);
+    }
+
+    // Show/hide filters based on groupByValue
+    if (groupByValue === 'team') {
+        document.getElementById('filter-matches-played').style.display = 'block';
+        // Hide other filters
+    } else {
+        document.getElementById('filter-matches-played').style.display = 'none';
+        // Hide other filters
+    }
+
+    // Reset filter values and update displayed values
+    document.getElementById('range-matches-played').value = 0;
+    document.getElementById('range-wins').value = 0;
+    document.getElementById('value-matches-played').textContent = '0';
+    document.getElementById('value-wins').textContent = '0';
+
+    setDefaultDropdownValues(groupByValue);
+    updateFilterVisibility(groupByValue);
+    updateChart(groupByValue);
+    updateInfoPanelWithExplanation();
+
+
+});
+
+
+document.getElementById('x-axis').addEventListener('change', function() {
+    updateChart(document.getElementById('group-by').value);
+});
+
+document.getElementById('y-axis').addEventListener('change', function() {
+    updateChart(document.getElementById('group-by').value);
+});
+
+document.getElementById('size').addEventListener('change', function() {
+    updateChart(document.getElementById('group-by').value);
+});
+
+document.getElementById('range-matches-played').addEventListener('input', function() {
+    let groupByValue = document.getElementById('group-by').value;
+    document.getElementById('value-matches-played').textContent = this.value;
+    updateChart(groupByValue);
+});
+
+document.getElementById('range-wins').addEventListener('input', function() {
+    let groupByValue = document.getElementById('group-by').value;
+    document.getElementById('value-wins').textContent = this.value;
+    updateChart(groupByValue);
+});
+
+document.getElementById('range-tournament-matches-played').addEventListener('input', function() {
+    let groupByValue = document.getElementById('group-by').value;
+    document.getElementById('value-tournament-matches-played').textContent = this.value;
+    updateChart(groupByValue);
+});
+
+document.getElementById('range-tournament-unique-teams').addEventListener('input', function() {
+    let groupByValue = document.getElementById('group-by').value;
+    document.getElementById('value-tournament-unique-teams').textContent = this.value;
+    updateChart(groupByValue);
+});
+
+document.getElementById('range-year-matches-count').addEventListener('input', function() {
+    document.getElementById('value-year-matches-count').textContent = this.value;
+    updateChart(document.getElementById('group-by').value);
+});
+
+document.getElementById('range-year-home-score').addEventListener('input', function() {
+    document.getElementById('value-year-home-score').textContent = this.value;
+    updateChart(document.getElementById('group-by').value);
+});
+
+document.getElementById('range-year-away-score').addEventListener('input', function() {
+    document.getElementById('value-year-away-score').textContent = this.value;
+    updateChart(document.getElementById('group-by').value);
+});
+
+document.getElementById('range-country-total-matches-hosted').addEventListener('input', function() {
+    document.getElementById('value-country-total-matches-hosted').textContent = this.value;
+    updateChart(document.getElementById('group-by').value);
+});
+
+document.getElementById('range-country-tournament-count').addEventListener('input', function() {
+    document.getElementById('value-country-tournament-count').textContent = this.value;
+    updateChart(document.getElementById('group-by').value);
+});
+
+
+
+window.onload = function() {
+    let groupByValue = document.getElementById('group-by').value;
+    let defaultColumns;
+
+    switch(groupByValue) {
+        case 'team':
+            defaultColumns = ['matches_played', 'wins', 'tournaments'];
+            break;
+        case 'tournament':
+            defaultColumns = ['matches_played', 'unique_teams', 'matches_played'];
+            break;
+        case 'year':
+            defaultColumns = ['home_score', 'away_score', 'matches_count'];
+            break;
+        case 'country':
+            defaultColumns = ['Total Matches Hosted', 'Average Home Score', 'Tournament Count'];
+            break;
+        default:
+            console.error('Unknown groupByValue:', groupByValue);
+            return; // Exit the function if groupByValue is not recognized
+    }
+
+    populateDropdowns(defaultColumns, groupByValue);
+
+    // Set the default values for each dropdown
+    setDefaultDropdownValues(groupByValue);
+
+    // Now that dropdowns are populated, get the initial values
+    let xAxisValue = document.getElementById('x-axis').value;
+    let yAxisValue = document.getElementById('y-axis').value;
+    let sizeValue = document.getElementById('size').value;
+
+    updateFilterVisibility(groupByValue);
+    // Finally, call updateChart with the initial values
+    updateChart(groupByValue, xAxisValue, yAxisValue, sizeValue);
+
+    // Set filter defaults
+    document.getElementById('range-matches-played').value = 0;
+    document.getElementById('range-wins').value = 0;
+    // Set initial displayed filter values
+    document.getElementById('value-matches-played').textContent = document.getElementById('range-matches-played').value;
+    document.getElementById('value-wins').textContent = document.getElementById('range-wins').value;
+
+    // Set initial values for tournament filters
+    document.getElementById('range-tournament-matches-played').value = 0;
+    document.getElementById('range-tournament-unique-teams').value = 0;
+    document.getElementById('value-tournament-matches-played').textContent = 0;
+    document.getElementById('value-tournament-unique-teams').textContent = 0;
+    // Set initial values for year filters
+    document.getElementById('range-year-matches-count').value = 0;
+    document.getElementById('range-year-home-score').value = 0;
+    document.getElementById('range-year-away-score').value = 0;
+    document.getElementById('value-year-matches-count').textContent = 0;
+    document.getElementById('value-year-home-score').textContent = 0;
+    document.getElementById('value-year-away-score').textContent = 0;
+    // Set initial values for country filters
+    document.getElementById('range-country-total-matches-hosted').value = 0;
+    document.getElementById('range-country-tournament-count').value = 0;
+    document.getElementById('value-country-total-matches-hosted').textContent = 0;
+    document.getElementById('value-country-tournament-count').textContent = 0;
+
+
+    // Update chart with defaults
+    updateChart(document.getElementById('group-by').value);
+
+};
+
+
+</script>
+
+</body>
+</html>
